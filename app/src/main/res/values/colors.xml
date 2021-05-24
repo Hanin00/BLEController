@@ -12,4 +12,5 @@
 
 
     <color name="btn_textColor">#FFFFFFFF</color>
+    <color name="toggle_switch">#8aa2f8</color>
 </resources>
