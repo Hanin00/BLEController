@@ -10,6 +10,7 @@
     <string name="txt_clicked">* 안녕하세요 *</string>
 
 
+    <string name="ble_not_supported">해당 기기는 BLE를 지원하지 않습니다</string>
     <string name="txt_bleStatus1">블루투스 연결 성공</string>
     <string name="txt_bleStatus2">블루투스 연결 실패</string>
     <string name="txt_bleStatus3">대기중</string>
