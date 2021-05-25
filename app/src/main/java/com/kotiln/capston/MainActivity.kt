@@ -1,25 +1,33 @@
 package com.kotiln.capston
 
+import android.app.ProgressDialog
 import android.bluetooth.BluetoothAdapter
-import android.content.Intent
-import android.content.pm.PackageManager
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothSocket
+import android.content.Context
+import android.os.AsyncTask
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
-import android.widget.ToggleButton
-import androidx.viewbinding.ViewBinding
 import com.kotiln.capston.databinding.ActivityMainBinding
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.IOException
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
-
     private lateinit var binding: ActivityMainBinding
-    private val REQUEST_ENABLE_BT=1
-    private var bluetoothAdapter: BluetoothAdapter? = null
 
-    //ble 지원 기기에만 앱 제공
-    private fun PackageManager.missingSystemFeature(name: String): Boolean = !hasSystemFeature(name)
+    // TODO 스캔해서 연결하는 기능 구현 필요
+    companion object {
+        var m_myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+        var m_bluetoothSocket: BluetoothSocket? = null
+        lateinit var m_progress: ProgressDialog
+        lateinit var m_bluetoothAdapter:BluetoothAdapter
+        var m_isConnected:Boolean = false
+        lateinit var m_address:String
+    }
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,67 +36,108 @@ class MainActivity : AppCompatActivity() {
         val view = binding.root
         setContentView(view)
 
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
-        if(bluetoothAdapter!=null){
-            // Device doesn't support Bluetooth
-            if(bluetoothAdapter?.isEnabled==false){
-                //어댑터 연결 불가능할 때,
-                binding.btnMainConnect.setText("연결 해제 하기")
-            } else{
-                binding.btnMainConnect.setText("연결 하기")
-            }
-        }
-
-        binding.btnMainConnect.setOnClickListener {
-            bluetoothOnOff()
-        }
-
-        packageManager.takeIf { it.missingSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE) }?.also {
-            Toast.makeText(this, R.string.ble_not_supported, Toast.LENGTH_SHORT).show()
-            finish()
-        }
+        binding.btnMainConnect
+        m_address= intent.getStringExtra(SelectDeviceActiviy.EXTRA_ADDRESS).toString()
 
 
 
         btn_main_go.setOnClickListener {
             txt_main_clicked.setText("앞으로")
-            Log.d("Test","Clicked btn_Stop")
+            sendCommand("GO")
         }
         btn_main_back.setOnClickListener {
             txt_main_clicked.setText("뒤로")
-            Log.d("Test","Clicked btn_Stop")
+            sendCommand("BACK")
         }
         btn_main_left.setOnClickListener {
             txt_main_clicked.setText("왼쪽으로")
-            Log.d("Test","Clicked btn_Stop")
+            sendCommand("LEFT")
         }
         btn_main_right.setOnClickListener {
             txt_main_clicked.setText("오른쪽으로")
-            Log.d("Test","Clicked btn_Stop")
+            sendCommand("RIGHT")
         }
         btn_main_stop.setOnClickListener {
             txt_main_clicked.setText("멈춤")
-            Log.d("Test","Clicked btn_Stop")
+            sendCommand("STOP")
             //Toast.makeText(this, "btn_clicked_Stop", Toast.LENGTH_SHORT).show()
         }
 
 
     }
-    fun bluetoothOnOff(){
-        if (bluetoothAdapter == null) {
-            // Device doesn't support Bluetooth
-            Log.d("bluetoothAdapter","Device doesn't support Bluetooth")
-        }else{
-            if (bluetoothAdapter?.isEnabled == false) { // 블루투스 꺼져 있으면 블루투스 활성화
-                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
-                binding.btnMainConnect.setText("연결 해제 하기")
-            } else{ // 블루투스 켜져있으면 블루투스 비활성화
-                bluetoothAdapter?.disable()
-                binding.btnMainConnect.setText("연결 하기")
+
+    //ble 모듈에 String 전송
+    private fun sendCommand(input:String) {
+        if(m_bluetoothSocket != null) {
+            try {
+                //연결이 됭 있으면 출력
+                m_bluetoothSocket!!.outputStream.write(input.toByteArray())
+                Log.d("Test",input)
+
+            }
+            catch (e:IOException) {
+                e.printStackTrace()
             }
         }
     }
+    //ble 연결 해제
+    private fun disconnect() {
+        if(m_bluetoothSocket != null) {
+            try {
+                m_bluetoothSocket!!.close()
+                m_bluetoothSocket = null
+                m_isConnected = false
+            }
+            catch (e:IOException) {
+                e.printStackTrace()
+            }
+        }
+        finish()
+    }
+    private class ConnectToDevice(c: Context): AsyncTask<Void, Void, String>() {
+        private var connectSuccess:Boolean = true
+        private val context:Context
+        init {
+            this.context=c
+        }
+        override fun onPreExecute() {
+            super.onPreExecute()
+            m_progress= ProgressDialog.show(context,"Connecting...","please wait")
+        }
+        override fun doInBackground(vararg params: Void?): String? {
+            try {
+                if(m_bluetoothSocket == null || !m_isConnected) {
+                    m_bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+                    val device:BluetoothDevice = m_bluetoothAdapter.getRemoteDevice(m_address)
+                    m_bluetoothSocket = device.createInsecureRfcommSocketToServiceRecord(m_myUUID)
+                    BluetoothAdapter.getDefaultAdapter().cancelDiscovery()
+                    m_bluetoothSocket!!.connect()
+                }
+            }
+            catch(e:IOException) {
+                connectSuccess=false
+                e.printStackTrace()
+            }
+            return null
+        }
+        //ble 연결 지원 기기인지 확인
+        override fun onPostExecute(result: String?) {
+            super.onPostExecute(result)
+            if(!connectSuccess) {
+                //연결 불가
+                Log.d("Test","연결 가능기기 아님 / coudln't connect")
+            }
+            else {
+                //연결 가능
+                m_isConnected=true
+                Log.d("Test","연결 가능기기 / Can connect")
+            }
+            m_progress.dismiss()
+        }
+    }
+
+
+
 
 }
