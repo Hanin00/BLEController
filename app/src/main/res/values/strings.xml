@@ -18,5 +18,5 @@
 
 
     <!-- Select Device  -->
-    <string name="refresh">연결끊기</string>
+    <string name="refresh">연결 기기 검색</string>
 </resources>

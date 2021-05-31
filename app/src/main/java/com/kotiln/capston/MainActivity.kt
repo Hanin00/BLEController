@@ -5,6 +5,8 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import android.content.Intent
+import android.content.res.Configuration
 import android.os.AsyncTask
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -17,16 +19,30 @@ import java.util.*
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
-    // TODO 스캔해서 연결하는 기능 구현 필요
+   
+
+
     companion object {
         var m_myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
         var m_bluetoothSocket: BluetoothSocket? = null
         lateinit var m_progress: ProgressDialog
-        lateinit var m_bluetoothAdapter:BluetoothAdapter
-        var m_isConnected:Boolean = false
-        lateinit var m_address:String
+        lateinit var m_bluetoothAdapter: BluetoothAdapter
+        var m_isConnected: Boolean = false
+        lateinit var m_address: String
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        when (newConfig.orientation) {
+            Configuration.ORIENTATION_PORTRAIT -> {
+
+
+                // 세로모드 코드 적용
+            }
+            Configuration.ORIENTATION_LANDSCAPE -> { // 가로모드 코드 적용
+            }
+        }
+    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,9 +54,15 @@ class MainActivity : AppCompatActivity() {
 
 
         binding.btnMainConnect
-        m_address= intent.getStringExtra(SelectDeviceActiviy.EXTRA_ADDRESS).toString()
+        m_address = intent.getStringExtra(SelectDeviceActiviy.EXTRA_ADDRESS).toString()
 
 
+        btn_main_connect.setOnClickListener {
+            disconnect()
+            val intent = Intent(this, SelectDeviceActiviy::class.java)
+            startActivity(intent)
+            finish()
+        }
 
         btn_main_go.setOnClickListener {
             txt_main_clicked.setText("앞으로")
@@ -68,76 +90,76 @@ class MainActivity : AppCompatActivity() {
     }
 
     //ble 모듈에 String 전송
-    private fun sendCommand(input:String) {
-        if(m_bluetoothSocket != null) {
+    private fun sendCommand(input: String) {
+        if (m_bluetoothSocket != null) {
             try {
                 //연결이 됭 있으면 출력
                 m_bluetoothSocket!!.outputStream.write(input.toByteArray())
-                Log.d("Test",input)
+                Log.d("Test", input)
 
-            }
-            catch (e:IOException) {
+            } catch (e: IOException) {
                 e.printStackTrace()
             }
         }
     }
+
     //ble 연결 해제
     private fun disconnect() {
-        if(m_bluetoothSocket != null) {
+        if (m_bluetoothSocket != null) {
             try {
                 m_bluetoothSocket!!.close()
                 m_bluetoothSocket = null
                 m_isConnected = false
-            }
-            catch (e:IOException) {
+            } catch (e: IOException) {
                 e.printStackTrace()
             }
         }
         finish()
     }
-    private class ConnectToDevice(c: Context): AsyncTask<Void, Void, String>() {
-        private var connectSuccess:Boolean = true
-        private val context:Context
+
+    private class ConnectToDevice(c: Context) : AsyncTask<Void, Void, String>() {
+        private var connectSuccess: Boolean = true
+        private val context: Context
+
         init {
-            this.context=c
+            this.context = c
         }
+
         override fun onPreExecute() {
             super.onPreExecute()
-            m_progress= ProgressDialog.show(context,"Connecting...","please wait")
+            m_progress = ProgressDialog.show(context, "Connecting...", "please wait")
         }
+
         override fun doInBackground(vararg params: Void?): String? {
             try {
-                if(m_bluetoothSocket == null || !m_isConnected) {
+                if (m_bluetoothSocket == null || !m_isConnected) {
                     m_bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-                    val device:BluetoothDevice = m_bluetoothAdapter.getRemoteDevice(m_address)
+                    val device: BluetoothDevice = m_bluetoothAdapter.getRemoteDevice(m_address)
                     m_bluetoothSocket = device.createInsecureRfcommSocketToServiceRecord(m_myUUID)
                     BluetoothAdapter.getDefaultAdapter().cancelDiscovery()
                     m_bluetoothSocket!!.connect()
                 }
-            }
-            catch(e:IOException) {
-                connectSuccess=false
+            } catch (e: IOException) {
+                connectSuccess = false
                 e.printStackTrace()
             }
             return null
         }
+
         //ble 연결 지원 기기인지 확인
         override fun onPostExecute(result: String?) {
             super.onPostExecute(result)
-            if(!connectSuccess) {
+            if (!connectSuccess) {
                 //연결 불가
-                Log.d("Test","연결 가능기기 아님 / coudln't connect")
-            }
-            else {
+                Log.d("Test", "연결 가능기기 아님 / coudln't connect")
+            } else {
                 //연결 가능
-                m_isConnected=true
-                Log.d("Test","연결 가능기기 / Can connect")
+                m_isConnected = true
+                Log.d("Test", "연결 가능기기 / Can connect")
             }
             m_progress.dismiss()
         }
     }
-
-
 
 
 }
