@@ -30,19 +30,19 @@ class MainActivity : AppCompatActivity() {
         var m_isConnected: Boolean = false
         lateinit var m_address: String
     }
-
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        when (newConfig.orientation) {
-            Configuration.ORIENTATION_PORTRAIT -> {
-
-
-                // 세로모드 코드 적용
-            }
-            Configuration.ORIENTATION_LANDSCAPE -> { // 가로모드 코드 적용
-            }
-        }
-    }
+//
+//    override fun onConfigurationChanged(newConfig: Configuration) {
+//        super.onConfigurationChanged(newConfig)
+//        when (newConfig.orientation) {
+//            Configuration.ORIENTATION_PORTRAIT -> {
+//
+//
+//                // 세로모드 코드 적용
+//            }
+//            Configuration.ORIENTATION_LANDSCAPE -> { // 가로모드 코드 적용
+//            }
+//        }
+//    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,26 +66,25 @@ class MainActivity : AppCompatActivity() {
 
         btn_main_go.setOnClickListener {
             txt_main_clicked.setText("앞으로")
-            sendCommand("GO")
+            sendCommand("G")
         }
         btn_main_back.setOnClickListener {
             txt_main_clicked.setText("뒤로")
-            sendCommand("BACK")
+            sendCommand("B")
         }
         btn_main_left.setOnClickListener {
             txt_main_clicked.setText("왼쪽으로")
-            sendCommand("LEFT")
+            sendCommand("L")
         }
         btn_main_right.setOnClickListener {
             txt_main_clicked.setText("오른쪽으로")
-            sendCommand("RIGHT")
+            sendCommand("R")
         }
         btn_main_stop.setOnClickListener {
             txt_main_clicked.setText("멈춤")
-            sendCommand("STOP")
+            sendCommand("S")
             //Toast.makeText(this, "btn_clicked_Stop", Toast.LENGTH_SHORT).show()
         }
-
 
     }
 
