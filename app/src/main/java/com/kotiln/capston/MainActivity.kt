@@ -19,9 +19,6 @@ import java.util.*
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
-   
-
-
     companion object {
         var m_myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
         var m_bluetoothSocket: BluetoothSocket? = null
@@ -40,7 +37,7 @@ class MainActivity : AppCompatActivity() {
 
 
         binding.btnMainConnect
-        m_address = intent.getStringExtra(SelectDeviceActiviy.EXTRA_ADDRESS).toString()
+       // m_address = intent.getStringExtra(SelectDeviceActiviy.EXTRA_ADDRESS).toString()
 
 
         btn_main_connect.setOnClickListener {

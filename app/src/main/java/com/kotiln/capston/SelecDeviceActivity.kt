@@ -1,76 +1,230 @@
 package com.kotiln.capston
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.*
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.synthetic.main.select_device_layout.*
 import org.jetbrains.anko.toast
+
+
+
 class SelectDeviceActiviy : AppCompatActivity() {
-    private var m_bluetoothAdapter:BluetoothAdapter? = null
-    private lateinit var m_pairedDevices:Set<BluetoothDevice>
-    private val REQUEST_ENABLE_BLUETOOTH = 1
-    companion object {
-        val EXTRA_ADDRESS: String = "Device_address"
+    private val REQUEST_ENABLE_BT=1
+    private val REQUEST_ALL_PERMISSION= 2
+    private val PERMISSIONS = arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION
+    )
+    private var bluetoothAdapter: BluetoothAdapter? = null
+    private var scanning: Boolean = false
+    private var devicesArr = ArrayList<BluetoothDevice>()
+    private val SCAN_PERIOD = 1000
+    private val handler = Handler()
+    private lateinit var viewManager: RecyclerView.LayoutManager
+    private lateinit var recyclerViewAdapter : RecyclerViewAdapter
+
+    // BLE Gatt
+    private var bleGatt: BluetoothGatt? = null
+    private var mContext: Context? = null
+
+    private val mLeScanCallback = @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    object : ScanCallback() {
+        override fun onScanFailed(errorCode: Int) {
+            super.onScanFailed(errorCode)
+            Log.d("scanCallback", "BLE Scan Failed : " + errorCode)
+        }
+
+        override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+            super.onBatchScanResults(results)
+            results?.let{
+                // results is not null
+                for (result in it){
+                    if (!devicesArr.contains(result.device) && result.device.name!=null) devicesArr.add(result.device)
+                }
+
+            }
+        }
+
+        override fun onScanResult(callbackType: Int, result: ScanResult?) {
+            super.onScanResult(callbackType, result)
+            result?.let {
+                // result is not null
+                if (!devicesArr.contains(it.device) && it.device.name!=null) devicesArr.add(it.device)
+                recyclerViewAdapter.notifyDataSetChanged()
+            }
+        }
+
     }
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun scanDevice(state:Boolean) = if(state){
+        handler.postDelayed({
+            scanning = false
+            bluetoothAdapter?.bluetoothLeScanner?.stopScan(mLeScanCallback)
+        }, SCAN_PERIOD)
+        scanning = true
+        devicesArr.clear()
+        bluetoothAdapter?.bluetoothLeScanner?.startScan(mLeScanCallback)
+    }else{
+        scanning = false
+        bluetoothAdapter?.bluetoothLeScanner?.stopScan(mLeScanCallback)
+    }
+
+    private fun hasPermissions(context: Context?, permissions: Array<String>): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
+            for (permission in permissions) {
+                if (ActivityCompat.checkSelfPermission(context, permission)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+    // Permission check
+    @SuppressLint("MissingSuperCall")
+    @RequiresApi(Build.VERSION_CODES.M)
+    override fun onRequestPermissionsResult(
+            requestCode: Int,
+            permissions: Array<String?>,
+            grantResults: IntArray
+    ) {
+        when (requestCode) {
+            REQUEST_ALL_PERMISSION -> {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Permissions granted!", Toast.LENGTH_SHORT).show()
+                } else {
+                    requestPermissions(permissions, REQUEST_ALL_PERMISSION)
+                    Toast.makeText(this, "Permissions must be granted", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.M)
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.select_device_layout)
-        m_bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-        if(m_bluetoothAdapter == null) {
-            toast("This device dosen't support bluetooth")
-            return
+        setContentView(R.layout.activity_main)
+        mContext = this
+        val scanBtn: Button = findViewById(R.id.select_device_refresh)
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        viewManager = LinearLayoutManager(this)
+
+        recyclerViewAdapter =  RecyclerViewAdapter(devicesArr)
+        recyclerViewAdapter.mListener = object : RecyclerViewAdapter.OnItemClickListener{
+            override fun onClick(view: View, position: Int) {
+                scanDevice(false) // scan 중지
+                val device = devicesArr.get(position)
+                bleGatt =  DeviceControlActivity(mContext, bleGatt).connectGatt(device)
+            }
         }
-        if(!m_bluetoothAdapter!!.isEnabled) {
-            val enableBluetoothIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            startActivityForResult(enableBluetoothIntent, REQUEST_ENABLE_BLUETOOTH)
+        val recyclerView = findViewById<RecyclerView>(R.id.recyclerView).apply {
+            layoutManager = viewManager
+            adapter = recyclerViewAdapter
         }
-        select_device_refresh.setOnClickListener{ pairedDeviceList() }
+/*
+        if(bluetoothAdapter!=null){
+            if(bluetoothAdapter?.isEnabled==false){
+                bleOnOffBtn.isChecked = true
+                scanBtn.isVisible = false
+            } else{
+                bleOnOffBtn.isChecked = false
+                scanBtn.isVisible = true
+            }
+        }*/
+
+        scanBtn.setOnClickListener {
+            bluetoothOnOff()
+            scanBtn.visibility = if (scanBtn.visibility == View.VISIBLE){ View.INVISIBLE } else{ View.VISIBLE }
+            if (scanBtn.visibility == View.INVISIBLE){
+                scanDevice(false)
+                devicesArr.clear()
+                recyclerViewAdapter.notifyDataSetChanged()
+            }
+        }
+
+        scanBtn.setOnClickListener { v:View? -> // Scan Button Onclick
+            if (!hasPermissions(this, PERMISSIONS)) {
+                requestPermissions(PERMISSIONS, REQUEST_ALL_PERMISSION)
+            }
+            scanDevice(true)
+        }
+
     }
-    private fun pairedDeviceList() {
-        m_pairedDevices = m_bluetoothAdapter!!.bondedDevices
-        val deviceList : ArrayList<BluetoothDevice> = ArrayList()
-        val nameList : ArrayList<String> = ArrayList()
-        if(!m_pairedDevices.isEmpty()) {
-            for(device:BluetoothDevice in m_pairedDevices) {
-                deviceList.add(device)
-                nameList.add(device.name+"("+device.address+")")
-                Log.i("device",""+device.name)
+    fun bluetoothOnOff(){
+        if (bluetoothAdapter == null) {
+            // Device doesn't support Bluetooth
+            Log.d("bluetoothAdapter","Device doesn't support Bluetooth")
+        }else{
+            if (bluetoothAdapter?.isEnabled == false) { // 블루투스 꺼져 있으면 블루투스 활성화
+                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
+            } else{ // 블루투스 켜져있으면 블루투스 비활성화
+                bluetoothAdapter?.disable()
             }
-        }
-        else {
-            toast("Paired devices not found")
-        }
-        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1,nameList)
-        select_device_list.adapter = adapter
-        select_device_list.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
-            val device: BluetoothDevice = deviceList[position]
-            val address: String = device.address
-            val intent = Intent(this, MainActivity::class.java)
-            intent.putExtra(EXTRA_ADDRESS,address)
-            startActivity(intent)
         }
     }
-    override fun onActivityResult(requestCode:Int, resultCode:Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if(requestCode == REQUEST_ENABLE_BLUETOOTH) {
-            if(resultCode == Activity.RESULT_OK) {
-                if(m_bluetoothAdapter!!.isEnabled) {
-                    toast("Bluetooth has been enabled")
+
+    class RecyclerViewAdapter(private val myDataset: ArrayList<BluetoothDevice>) :
+            RecyclerView.Adapter<RecyclerViewAdapter.MyViewHolder>() {
+
+        var mListener : OnItemClickListener? = null
+
+        interface OnItemClickListener{
+            fun onClick(view: View, position: Int)
+        }
+
+
+        class MyViewHolder(val linearView: LinearLayout) : RecyclerView.ViewHolder(linearView)
+
+        override fun onCreateViewHolder(parent: ViewGroup,
+                                        viewType: Int): RecyclerViewAdapter.MyViewHolder {
+            // create a new view
+            val linearView = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.recyclerview_item, parent, false) as LinearLayout
+
+            return MyViewHolder(linearView)
+        }
+
+        // Replace the contents of a view (invoked by the layout manager)
+        override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
+            val itemName: TextView = holder.linearView.findViewById(R.id.item_name)
+            val itemAddress:TextView = holder.linearView.findViewById(R.id.item_address)
+            itemName.text = myDataset[position].name
+            itemAddress.text = myDataset[position].address
+            if(mListener!=null){
+                holder?.itemView?.setOnClickListener{v->
+                    mListener?.onClick(v, position)
                 }
-                else {
-                    toast("Bluetooth has benn disabled")
-                }
-            }
-            else if(resultCode == Activity.RESULT_CANCELED) {
-                toast("Bluetooth enabling has benn canceled")
             }
         }
+
+        override fun getItemCount() = myDataset.size
     }
 }
 
+private fun Handler.postDelayed(function: () -> Unit?, scanPeriod: Int) {
+
+}
