@@ -30,20 +30,6 @@ class MainActivity : AppCompatActivity() {
         var m_isConnected: Boolean = false
         lateinit var m_address: String
     }
-//
-//    override fun onConfigurationChanged(newConfig: Configuration) {
-//        super.onConfigurationChanged(newConfig)
-//        when (newConfig.orientation) {
-//            Configuration.ORIENTATION_PORTRAIT -> {
-//
-//
-//                // 세로모드 코드 적용
-//            }
-//            Configuration.ORIENTATION_LANDSCAPE -> { // 가로모드 코드 적용
-//            }
-//        }
-//    }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,7 +69,6 @@ class MainActivity : AppCompatActivity() {
         btn_main_stop.setOnClickListener {
             txt_main_clicked.setText("멈춤")
             sendCommand("S")
-            //Toast.makeText(this, "btn_clicked_Stop", Toast.LENGTH_SHORT).show()
         }
 
     }

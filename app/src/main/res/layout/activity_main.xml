@@ -5,24 +5,24 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
+
     <androidx.appcompat.widget.AppCompatButton
-      android:id="@+id/btn_main_connect"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:id="@+id/btn_main_connect"
+        android:layout_width="106dp"
+        android:layout_height="42dp"
+        android:background="@drawable/btn_rounded"
+        android:padding="15dp"
+        android:text="연결종료하기"
+        android:textColor="@color/btn_textColor"
+        android:textSize="15sp"
+        android:textStyle="bold"
+
+
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintVertical_bias="0.3"
-        android:background="@drawable/btn_rounded"
-
-
-        android:text="연결종료하기"
-        android:textColor="@color/btn_textColor"
-        android:textStyle="bold"
-        android:textSize="15sp"
-        android:padding="15dp"
-        />
+        app:layout_constraintVertical_bias="0.3" />
 
     <TextView
         android:id="@+id/txt_main_clicked"
